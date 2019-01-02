@@ -8,6 +8,7 @@ import com.google.common.collect.MultimapBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.IOFileFilter;
+import org.apache.commons.lang3.RegExUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.Test;
 
@@ -26,17 +27,48 @@ import static com.yangdaodao.demopdfaudio.common.Constants.baseObjectKey;
 
 @Slf4j
 public class FormatAudioPdf {
+	public static String[] allSuffixArray = new String[]{"mp3", "m4a", "pdf", "png", "jpg"};
 	public static List<String> audioSuffixList = Arrays.asList("mp3", "m4a");
 
 	public static String basePath = "F:\\BaiduNetdiskDownload";
 //	public static String courseGroupName = "03.产品思维30讲（完结）";
-	public static String courseGroupName = "16 五分钟商学院(完)";
+//	public static String courseGroupName = "16 五分钟商学院(完)";
+	public static String courseGroupName = "13 贾行家说《聊斋》（完结）";
 	public static String parentPath = basePath + "/" + courseGroupName;
 	public static String parentPathFormat = basePath + "\\" + courseGroupName + "-Format";
 	public static String parentPathGroup = basePath + "\\" + courseGroupName + "-Group";
 
 	public static String outerStaticPath = "F:/BaiduNetdiskDownload/outer-static";
 
+	@Test // 更新目录
+	public void updateCatalogue() throws IOException {
+		JSONObject catalogue = readCatalogue();
+		catalogue.remove(courseGroupName);
+		JSONObject courseGroupJSON = new JSONObject();
+		List<File> allFiles = listFiles(new File(parentPathGroup));
+		for (int i = 0; i < allFiles.size(); i++) {
+			File file = allFiles.get(i);
+			String obsKey = StringUtils.replace(StringUtils.replace(file.getAbsolutePath(), parentPathGroup, baseObjectKey + "/" + courseGroupName), "\\", "/");
+			FileUtils.copyFile(file, new File(outerStaticPath + "/" + obsKey));
+
+			JSONObject tempJSONObject = courseGroupJSON;
+			for (String path : file.getParent().replace(parentPathGroup + "\\", "").split("\\\\")) {
+				if (tempJSONObject.getJSONObject(path) == null) {
+					tempJSONObject.put(path, new JSONObject());
+				}
+				tempJSONObject = tempJSONObject.getJSONObject(path);
+			}
+			// 写入目录
+			try {
+				writeCourseDetailToCatalogue(file, tempJSONObject);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			log.info("{} / {}", i + 1, allFiles.size());
+		}
+		catalogue.put(courseGroupName, courseGroupJSON);
+		writeCatalogue(catalogue);
+	}
 
 	/**
 	 * 处理音频及PDF
@@ -44,43 +76,36 @@ public class FormatAudioPdf {
 	 */
 	@Test // 03.产品思维30讲（完结）
 	public void formatAudioPdf() throws IOException {
+		// 1 去除多余的名称内容
 		File baseDirectoryFile = new File(parentPath);
-		for (File file : FileUtils.listFiles(baseDirectoryFile, new String[]{"mp3", "m4a", "pdf"}, false)) {
+		for (File file : listFiles(baseDirectoryFile)) {
 			String fileName = file.getName();
-			String newFileName = StringUtils.replace(fileName, "【更多课程微信：SEX20101220】", "");
+			String newFileName = StringUtils.replace(fileName, "【更多课程微信：sex20101220】", "");
+			newFileName = RegExUtils.removePattern(newFileName, "^lz");
 			FileUtils.copyFile(file, new File(parentPathFormat + File.separator + newFileName));
 		}
 	}
 
 	@Test
 	public void generateCatalogue() throws IOException {
+		// 0 大致检查下文件名是否相互匹配（音频、图片、pdf）
+		// 1 按名称分组到文件夹
 		Multimap<String, File> multimap = MultimapBuilder.linkedHashKeys().arrayListValues().build();
-		List<File> fileList = new ArrayList<>(FileUtils.listFiles(new File(parentPathFormat), new String[]{"mp3", "pdf"}, false));
+		List<File> fileList = listFiles(new File(parentPathFormat));
 		for (File file : fileList) {
 			String plainFileName = StringUtils.split(file.getName(), ".", 2)[0];
 			multimap.put(plainFileName, file);
 		}
 
+		// 将文件拷贝到对应组下
 		int index = 0;
-		JSONObject catalogue = readCatalogue();
-		catalogue.remove(courseGroupName);
-		JSONObject courseGroupJSON = new JSONObject();
 		for (String plainFileName : multimap.keySet()) {
-			JSONObject courseDetailJSON = courseGroupJSON.getJSONObject(plainFileName) == null ? new JSONObject() : courseGroupJSON.getJSONObject(plainFileName);
 			for (File file : multimap.get(plainFileName)) {
 				File copiedFile = new File(parentPathGroup + File.separator + plainFileName + File.separator + file.getName());
 				FileUtils.copyFile(file, copiedFile);
-				// 写入目录
-				writeCourseDetailToCatalogue(copiedFile, courseDetailJSON);
 			}
-			courseGroupJSON.put(plainFileName, courseDetailJSON);
 			log.info("{} / {}", ++index, multimap.keySet().size());
 		}
-		catalogue.put(courseGroupName, courseGroupJSON);
-		// 保存目录
-		File catalogueFile = new File(basePath + File.separator + baseObjectKey + File.separator + "catalogue.json");
-		FileUtils.write(catalogueFile, JSON.toJSONString(catalogue, true));
-//		LocalObsUtil.upload(catalogueFile, baseObjectKey + "/catalogue.json");
 	}
 
 	/**
@@ -93,10 +118,10 @@ public class FormatAudioPdf {
 		File baseDirectoryFile = new File(parentPath);
 
 		Multimap<String, File> multimap = MultimapBuilder.linkedHashKeys().arrayListValues().build();
-		for (File file : FileUtils.listFiles(baseDirectoryFile, new String[]{"mp3", "m4a"}, true)) {
+		for (File file : listFiles(baseDirectoryFile)) {
 			multimap.put(file.getParentFile().getName(), file);
 		}
-		for (File file : FileUtils.listFiles(baseDirectoryFile, new String[]{"png", "jpg"}, true)) {
+		for (File file : listFiles(baseDirectoryFile)) {
 			multimap.put(file.getParentFile().getParentFile().getName(), file);
 		}
 
@@ -114,41 +139,18 @@ public class FormatAudioPdf {
 		for (File file : fileList) {
 			tempMultimap.put(findFileKey(file, "[lL][rR]\\d{4}"), file);
 		}
-		// 找到课程真实名称
+		// 1 找到课程真实名称
 		Multimap<String, File> multimap = MultimapBuilder.linkedHashKeys().arrayListValues().build();
 		for (String key : tempMultimap.keys()) {
 			multimap.putAll(findCourseName(tempMultimap.get(key)), tempMultimap.get(key));
 		}
-		// 按课程名分组
+		// 2 按课程名分组
 		for (String courseName : multimap.keys()) {
 			for (File file : multimap.get(courseName)) {
 				String newParentPath = StringUtils.replace(file.getParent(), parentPathFormat, parentPathGroup) + "/" + courseName + "/" + file.getName();
 				FileUtils.copyFile(file, new File(newParentPath));
 			}
 		}
-
-		// 目录
-		int index = 0;
-		JSONObject catalogue = readCatalogue();
-		catalogue.remove(courseGroupName);
-		JSONObject courseGroupJSON = new JSONObject();
-		for (File file : FileUtils.listFiles(new File(parentPathGroup), new String[]{"mp3", "m4a", "png", "jpg"}, true)) {
-			JSONObject tempJSONObject = courseGroupJSON;
-			for (String path : file.getParent().replace(parentPathGroup + "\\", "").split("\\\\")) {
-				if (tempJSONObject.getJSONObject(path) == null) {
-					tempJSONObject.put(path, new JSONObject());
-				}
-				tempJSONObject = tempJSONObject.getJSONObject(path);
-			}
-			// 写入目录
-			writeCourseDetailToCatalogue(file, tempJSONObject);
-			log.info("{} / {}", ++index, multimap.keySet().size());
-		}
-		catalogue.put(courseGroupName, courseGroupJSON);
-		// 保存目录
-		File catalogueFile = new File(basePath + File.separator + baseObjectKey + File.separator + "catalogue.json");
-		FileUtils.write(catalogueFile, JSON.toJSONString(catalogue, true));
-//		LocalObsUtil.upload(catalogueFile, baseObjectKey + "/catalogue.json");
 	}
 
 	private void writeCourseDetailToCatalogue(File file, JSONObject tempJSONObject) throws IOException {
@@ -166,8 +168,6 @@ public class FormatAudioPdf {
 		} else {
 			pictureList.add(obsKey);
 		}
-//		LocalObsUtil.upload(file, obsKey);
-		FileUtils.copyFile(file, new File(outerStaticPath + "/" + obsKey));
 
 		if (audioList.size() > 0) {
 			tempJSONObject.put("audioList", audioList);
@@ -179,20 +179,6 @@ public class FormatAudioPdf {
 			tempJSONObject.put("pictureList", pictureList);
 		}
 	}
-
-//	// 上传音频及PDF
-//	@Test
-//	public void uploadAudioPdf() throws IOException {
-//		File baseDirectoryFile = new File(parentPathFormat);
-//		//1 检测所有的mp3 是否都有对应的pdf
-//		List<File> fileList = new ArrayList<>(FileUtils.listFiles(baseDirectoryFile, new String[]{"mp3", "pdf"}, false));
-//		for (int i = 0; i < fileList.size(); i++) {
-//			File file = fileList.get(i);
-//			String fileName = file.getName();
-//			LocalObsUtil.upload(file, baseObjectKey + "/" + baseDirectoryFile.getName() + "/" + fileName);
-//			log.info("upload success {} / {}", i + 1, fileList.size());
-//		}
-//	}
 
 	/**
 	 * 查看所有的后缀
@@ -255,7 +241,7 @@ public class FormatAudioPdf {
 
 	//读取目录
 	public JSONObject readCatalogue() {
-		File catalogueFile = new File(basePath + "\\catalogue.json");
+		File catalogueFile = new File(outerStaticPath + File.separator + "catalogue.json");
 		JSONObject catalogue = new JSONObject();
 		if (catalogueFile.exists()) {
 			try {
@@ -265,6 +251,20 @@ public class FormatAudioPdf {
 			}
 		}
 		return catalogue;
+	}
+
+	//保存目录
+	public void writeCatalogue(JSONObject catalogue) {
+		File catalogueFile = new File(outerStaticPath + File.separator + "catalogue.json");
+		try {
+			FileUtils.write(catalogueFile, JSON.toJSONString(catalogue, true));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public List<File> listFiles(File file) {
+		return new ArrayList<>(FileUtils.listFiles(file, allSuffixArray, true));
 	}
 
 }
