@@ -28,12 +28,12 @@
             font-size: 4rem; color: gray; opacity:0.5; cursor: pointer">
             <span class="glyphicon glyphicon-chevron-left" aria-hidden="true" @click="returnList()"></span>
         </div>
-        <div v-if="showList">
+        <div v-show="showList">
             <ul class="list-group" v-for="(key, index) in Object.keys(pageVoList).sort()" :key="index">
                 <li @click="openPage(key)" class="list-group-item" style="cursor: pointer">{{key}}</li>
             </ul>
         </div>
-        <div v-else>
+        <div v-show="!showList">
             <!--音频-->
             <div style="display: flex; justify-content: center">
                 <audio v-for="obsKey in currentPageVo['audioList']" :src="obsKeyToPathMap[obsKey]" :tiggerLoad="audioSrc(obsKey)"
@@ -110,6 +110,7 @@
                     if (pageVoObj['audioList'] || pageVoObj['pdfList'] || pageVoObj['pictureList']) {
                         this.currentPageVo = pageVoObj;
                         this.showList = false;
+                        return {};
                     } else {
                         return pageVoObj;
                     }
@@ -120,12 +121,6 @@
             }
         }
     });
-
-
-    // var baseViewerJsUrl = '/static/plugins/pdfJs/generic/web/viewer.html';
-    // $('#iframe-pdf').css('height', window.innerHeight + 'px');
-    // $('#iframe-pdf').attr('src', baseViewerJsUrl + '?file=' + encodeURIComponent('/assist/test2'));
-
 
     // $.ajax({
     //     type: 'post',
@@ -147,7 +142,6 @@
         data: {},
         success: function (catalogue) {
             vueContent.catalogue = catalogue;
-            console.log(vueContent.catalogue)
         }
     });
 
