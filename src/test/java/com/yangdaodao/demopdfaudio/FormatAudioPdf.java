@@ -33,7 +33,10 @@ public class FormatAudioPdf {
 	public static String basePath = "F:\\BaiduNetdiskDownload";
 //	public static String courseGroupName = "03.产品思维30讲（完结）";
 //	public static String courseGroupName = "16 五分钟商学院(完)";
-	public static String courseGroupName = "13 贾行家说《聊斋》（完结）";
+//	public static String courseGroupName = "13 贾行家说《聊斋》（完结）";
+//	public static String courseGroupName = "28有效训练你的随机应变能力";
+//	public static String courseGroupName = "30.有效提升与陌生人的社交能力";
+	public static String courseGroupName = "06有效训练你的幽默感";
 	public static String parentPath = basePath + "/" + courseGroupName;
 	public static String parentPathFormat = basePath + "\\" + courseGroupName + "-Format";
 	public static String parentPathGroup = basePath + "\\" + courseGroupName + "-Group";
@@ -88,7 +91,7 @@ public class FormatAudioPdf {
 
 	@Test
 	public void generateCatalogue() throws IOException {
-		// 0 大致检查下文件名是否相互匹配（音频、图片、pdf）
+		// 0 人工大致检查下文件名是否相互匹配（音频、图片、pdf）
 		// 1 按名称分组到文件夹
 		Multimap<String, File> multimap = MultimapBuilder.linkedHashKeys().arrayListValues().build();
 		List<File> fileList = listFiles(new File(parentPathFormat));
