@@ -26,20 +26,28 @@
     <div id="vue-content" style="padding: 5px">
         <div v-if="showBackIcon" style="position: fixed; z-index: 10000; bottom: 60px; left: 20px;
             font-size: 4rem; color: gray; opacity:0.5; cursor: pointer">
-            <span class="glyphicon glyphicon-chevron-left" aria-hidden="true" @click="returnList()"></span>
+            <span class="glyphicon glyphicon-chevron-left" aria-hidden="true" @click="backHandler()"></span>
         </div>
+        <!--音频-->
+        <div style="display: flex; justify-content: center">
+            <audio :autoplay="showList" v-for="obsKey in currentPageVo['audioList']" :src="obsKeyToPathMap[obsKey]" :tiggerLoad="audioSrc(obsKey)"
+                   controls="controls" style="display: block; width: 100%; position: fixed; z-index: 10000; bottom: 10px;">
+            </audio>
+        </div>
+        <!--列表-->
         <div v-show="showList">
             <ul class="list-group" v-for="(key, index) in Object.keys(pageVoList).sort()" :key="index">
-                <li @click="openPage(key)" class="list-group-item" style="cursor: pointer">{{key}}</li>
+                <li v-if="!pageVoList[key]['audioList']" @click="openPage(key)" class="list-group-item"
+                    style="cursor: pointer">{{key}}</li>
+                <li v-if="pageVoList[key]['audioList']" class="list-group-item"
+                    style="display: flex; justify-content: space-between; align-items: center">
+                    <span style="cursor: pointer" @click="openPage(key)">{{key}}</span>
+                    <span style="font-size: 2rem" @click="playAudio(pageVoList[key]['audioList'])"
+                          class="glyphicon glyphicon-play-circle" aria-hidden="true"></span>
+                </li>
             </ul>
         </div>
         <div v-show="!showList">
-            <!--音频-->
-            <div style="display: flex; justify-content: center">
-                <audio v-for="obsKey in currentPageVo['audioList']" :src="obsKeyToPathMap[obsKey]" :tiggerLoad="audioSrc(obsKey)"
-                       controls="controls" style="display: block; width: 100%; position: absolute; z-index: 10000; bottom: 10px;">
-                </audio>
-            </div>
             <!--pdf-->
             <iframe v-for="obsKey in currentPageVo['pdfList']" :src="obsKeyToPathMap[obsKey]" :tiggerLoad="pdfIframeSrc(obsKey)"
                     :style="{width: '100%', height: window.innerHeight + 'px'}"></iframe>
@@ -97,6 +105,9 @@
                 $.post(`/assist/loadObs?obsKey=${obsKey}`, function (url) {
                     Vue.set(_this.obsKeyToPathMap, obsKey, url);
                 });
+            },
+            playAudio: function (audioList) {
+                Vue.set(this.currentPageVo, 'audioList', audioList);
             }
         },
         computed: {
