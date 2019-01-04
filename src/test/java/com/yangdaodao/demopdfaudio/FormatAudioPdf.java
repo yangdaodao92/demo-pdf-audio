@@ -35,8 +35,10 @@ public class FormatAudioPdf {
 //	public static String courseGroupName = "16 五分钟商学院(完)";
 //	public static String courseGroupName = "13 贾行家说《聊斋》（完结）";
 //	public static String courseGroupName = "28有效训练你的随机应变能力";
-//	public static String courseGroupName = "30.有效提升与陌生人的社交能力";
-	public static String courseGroupName = "06有效训练你的幽默感";
+	public static String courseGroupName = "30.有效提升与陌生人的社交能力";
+//	public static String courseGroupName = "06有效训练你的幽默感";
+//	public static String courseGroupName = "07 华杉讲透孙子兵法（完结）";
+//	public static String courseGroupName = "49 怎样成为带团队的高手";
 	public static String parentPath = basePath + "/" + courseGroupName;
 	public static String parentPathFormat = basePath + "\\" + courseGroupName + "-Format";
 	public static String parentPathGroup = basePath + "\\" + courseGroupName + "-Group";
@@ -83,8 +85,8 @@ public class FormatAudioPdf {
 		File baseDirectoryFile = new File(parentPath);
 		for (File file : listFiles(baseDirectoryFile)) {
 			String fileName = file.getName();
-			String newFileName = StringUtils.replace(fileName, "【更多课程微信：sex20101220】", "");
-			newFileName = RegExUtils.removePattern(newFileName, "^lz");
+			String newFileName = StringUtils.replace(fileName, "（更多课程微信：cfj068 公众号：众享学堂）", "");
+//			newFileName = RegExUtils.removePattern(newFileName, "^lz");
 			FileUtils.copyFile(file, new File(parentPathFormat + File.separator + newFileName));
 		}
 	}
@@ -96,7 +98,7 @@ public class FormatAudioPdf {
 		Multimap<String, File> multimap = MultimapBuilder.linkedHashKeys().arrayListValues().build();
 		List<File> fileList = listFiles(new File(parentPathFormat));
 		for (File file : fileList) {
-			String plainFileName = StringUtils.split(file.getName(), ".", 2)[0];
+			String plainFileName = StringUtils.substring(file.getName(), 1, file.getName().lastIndexOf("."));
 			multimap.put(plainFileName, file);
 		}
 
