@@ -5,6 +5,7 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
+import com.yangdaodao.demopdfaudio.util.Pdf2ImageUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.IOFileFilter;
@@ -32,18 +33,46 @@ public class FormatAudioPdf {
 
 	public static String basePath = "F:\\BaiduNetdiskDownload";
 //	public static String courseGroupName = "03.产品思维30讲（完结）";
-//	public static String courseGroupName = "16 五分钟商学院(完)";
+//	public static String courseGroupName = "07 华杉讲透孙子兵法（完结）";
 //	public static String courseGroupName = "13 贾行家说《聊斋》（完结）";
 //	public static String courseGroupName = "28有效训练你的随机应变能力";
 	public static String courseGroupName = "30.有效提升与陌生人的社交能力";
+
+//	public static String courseGroupName = "16 五分钟商学院(完)";
 //	public static String courseGroupName = "06有效训练你的幽默感";
-//	public static String courseGroupName = "07 华杉讲透孙子兵法（完结）";
 //	public static String courseGroupName = "49 怎样成为带团队的高手";
 	public static String parentPath = basePath + "/" + courseGroupName;
 	public static String parentPathFormat = basePath + "\\" + courseGroupName + "-Format";
 	public static String parentPathGroup = basePath + "\\" + courseGroupName + "-Group";
 
 	public static String outerStaticPath = "F:/BaiduNetdiskDownload/outer-static";
+
+	@Test
+	public void linshi2() {
+		List<File> allFiles = listFiles(new File(parentPathGroup));
+		for (File file : allFiles) {
+			String suffix = StringUtils.substring(file.getName(), file.getName().lastIndexOf(".") + 1);
+			if (suffix.equals("pdf")) {
+				FileUtils.deleteQuietly(file);
+			}
+		}
+	}
+
+	@Test
+	public void linshi() {
+		List<File> allFiles = listFiles(new File(parentPathGroup));
+		for (File file : allFiles) {
+			String suffix = StringUtils.substring(file.getName(), file.getName().lastIndexOf(".") + 1);
+			if (suffix.equals("pdf")) {
+				boolean flag = Pdf2ImageUtil.pdf2Image(file.getAbsolutePath(), 60);
+				if (flag) {
+//					FileUtils.deleteQuietly(file);
+				} else {
+					throw new RuntimeException("file " + file.getName() + " 转换失败！");
+				}
+			}
+		}
+	}
 
 	@Test // 更新目录
 	public void updateCatalogue() throws IOException {
@@ -107,7 +136,7 @@ public class FormatAudioPdf {
 		for (String plainFileName : multimap.keySet()) {
 			for (File file : multimap.get(plainFileName)) {
 				File copiedFile = new File(parentPathGroup + File.separator + plainFileName + File.separator + file.getName());
-				FileUtils.copyFile(file, copiedFile);
+				copyFileWithConvert(file, copiedFile);
 			}
 			log.info("{} / {}", ++index, multimap.keySet().size());
 		}
@@ -153,7 +182,7 @@ public class FormatAudioPdf {
 		for (String courseName : multimap.keys()) {
 			for (File file : multimap.get(courseName)) {
 				String newParentPath = StringUtils.replace(file.getParent(), parentPathFormat, parentPathGroup) + "/" + courseName + "/" + file.getName();
-				FileUtils.copyFile(file, new File(newParentPath));
+				copyFileWithConvert(file, new File(newParentPath));
 			}
 		}
 	}
@@ -270,6 +299,26 @@ public class FormatAudioPdf {
 
 	public List<File> listFiles(File file) {
 		return new ArrayList<>(FileUtils.listFiles(file, allSuffixArray, true));
+	}
+
+	/**
+	 * 自动转换pdf 到 图片
+	 */
+	public void copyFileWithConvert(File file, File copiedFile) {
+		String suffix = StringUtils.substring(file.getName(), file.getName().lastIndexOf(".") + 1);
+		try {
+			FileUtils.copyFile(file, copiedFile);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		if (suffix.equals("pdf")) {
+			boolean flag = Pdf2ImageUtil.pdf2Image(file.getAbsolutePath(), 300);
+			if (flag) {
+				FileUtils.deleteQuietly(file);
+			} else {
+				throw new RuntimeException("file " + file.getName() + " 转换失败！");
+			}
+		}
 	}
 
 }
