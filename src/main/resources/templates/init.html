@@ -30,32 +30,36 @@
         </div>
         <!--音频-->
         <div style="display: flex; justify-content: center">
-            <audio :autoplay="showList" v-for="obsKey in currentPageVo['audioList']" :src="obsKeyToPathMap[obsKey]" :tiggerLoad="audioSrc(obsKey)"
+            <audio :autoplay="showList" v-for="(obsKey, index) in currentCourseObj['audioList']" :src="obsKeyToPathMap[obsKey]"
+                   :tiggerLoad="audioSrc(obsKey)"
                    controls="controls" style="display: block; width: 100%; position: fixed; z-index: 10000; bottom: 10px;">
             </audio>
         </div>
         <!--列表-->
-        <div v-show="showList">
-            <ul class="list-group" v-for="(key, index) in Object.keys(pageVoList).sort()" :key="index">
-                <li v-if="!pageVoList[key]['audioList']" @click="openPage(key)" class="list-group-item"
-                    style="cursor: pointer">{{key}}</li>
-                <li v-if="pageVoList[key]['audioList']" class="list-group-item"
+        <div v-if="showList">
+            <ul class="list-group" v-for="(key, index) in Object.keys(courseList).sort()" :key="index">
+                <li v-if="!courseList[key]['audioList']" @click="goHandler(key)" :style="{color: courseColor(key)}"
+                    class="list-group-item" style="cursor: pointer">{{key}}</li>
+                <li v-if="courseList[key]['audioList']" class="list-group-item" :style="{color: courseColor(key)}"
                     style="display: flex; justify-content: space-between; align-items: center">
-                    <span style="cursor: pointer" @click="openPage(key)">{{key}}</span>
-                    <span style="font-size: 2rem" @click="playAudio(pageVoList[key]['audioList'])"
-                          class="glyphicon glyphicon-play-circle" aria-hidden="true"></span>
+                    <span style="cursor: pointer" @click="goHandler(key)">{{key}}</span>
+                    <span style="font-size: 2rem" @click="playAudio(courseList[key]['audioList'], key)"
+                          :class="{'glyphicon-play': key != activeCourseName, 'glyphicon-pause': key == activeCourseName}"
+                          class="glyphicon" aria-hidden="true"></span>
                 </li>
             </ul>
         </div>
-        <div v-show="!showList">
+        <!--课程-->
+        <div v-if="!showList">
             <!--pdf-->
-            <iframe v-for="obsKey in currentPageVo['pdfList']" :src="obsKeyToPathMap[obsKey]" :tiggerLoad="pdfIframeSrc(obsKey)"
+            <iframe v-for="obsKey in currentCourseObj['pdfList']" :src="obsKeyToPathMap[obsKey]" :tiggerLoad="pdfIframeSrc(obsKey)"
                     :style="{width: '100%', height: window.innerHeight + 'px'}"></iframe>
             <!--图片-->
-            <div v-if="currentPageVo['pictureList']" :style="{height: window.innerHeight + 'px', overflowY: 'scroll', overflowScrolling: 'touch'}">
+            <div v-if="currentCourseObj['pictureList']" ref="imgBoxWrapper"
+                 :style="{height: window.innerHeight + 'px', overflowY: 'scroll', overflowScrolling: 'touch'}">
                 <div class="img-box">
-                    <img v-for="obsKey in currentPageVo['pictureList']" :src="obsKeyToPathMap[obsKey]" alt="加载中" :tiggerLoad="pictureSrc(obsKey)"
-                         style="display: block">
+                    <img v-for="obsKey in currentCourseObj['pictureList']" :src="obsKeyToPathMap[obsKey]" :tiggerLoad="pictureSrc(obsKey)"
+                         @load="imgLoad(obsKey)" alt="加载中" style="display: block">
                 </div>
             </div>
         </div>
@@ -71,20 +75,53 @@
     var vueContent = new Vue({
         el: '#vue-content',
         data: {
-            catalogue: {},
+            catalogue: {}, // 课程目录
+            userConf: {}, // 用户配置
             showList: true,
             paths: [], // 层次路径
-            currentPageVo: {},
-            obsKeyToPathMap: {}
+            activeCourseName: '', // 当前激活播放的路径
+            currentCourseObj: {}, // 当前打开的课程
+            currentCourseStatus: {}, // 当前课程状态
+
+            obsKeyToPathMap: {} // 课程路径 -> src
         },
         methods: {
-            openPage: function (key) {
+            goHandler: function (key) {
+                if (this.showList) {
+                    setThenAjax(this.userConf, this.paths, 'scrollTop', $('html').scrollTop());
+                }
+
                 this.paths.push(key);
+                let courseObj = get(this.catalogue, this.paths);
+                if (courseObj['audioList'] || courseObj['pictureList']) {
+                    // 配合监测图片是否完全加载完成
+                    if (courseObj['pictureList']) {
+                        Vue.set(this.currentCourseStatus, 'pictureListLength', courseObj['pictureList'].length);
+                        Vue.set(this.currentCourseStatus, 'pictureList', []);
+                    }
+                    // 记录当前点击的课程
+                    set(this.userConf, ['lastCourse'], 'paths', this.paths.slice(0, -1));
+                    setThenAjaxThenForceUpdate(this.userConf, ['lastCourse'], 'name', this.paths.slice(-1)[0]);
+
+                    this.showList = false;
+                    this.currentCourseObj = courseObj;
+                } else {
+                    Vue.nextTick(() => {
+                        $('html').scrollTop(get(this.userConf, this.paths, 'scrollTop', 0))
+                    });
+                }
             },
             backHandler: function () {
-                this.paths.pop();
                 if (!this.showList) {
+                    setThenAjax(this.userConf, this.paths, 'scrollTop', $(this.$refs.imgBoxWrapper).scrollTop());
                     this.showList = true;
+                    this.currentCourseStatus = {};
+                }
+                this.paths.pop();
+                if (this.showList) {
+                    Vue.nextTick(() => {
+                        $('html').scrollTop(get(this.userConf, this.paths, 'scrollTop', 0))
+                    })
                 }
             },
             audioSrc: function (obsKey) {
@@ -106,32 +143,89 @@
                     Vue.set(_this.obsKeyToPathMap, obsKey, url);
                 });
             },
-            playAudio: function (audioList) {
-                Vue.set(this.currentPageVo, 'audioList', audioList);
+            playAudio: function (audioList, courseName) {
+                Vue.set(this.currentCourseObj, 'audioList', audioList);
+                this.activeCourseName = courseName;
+            },
+            imgLoad: function (obsKey) {
+                Vue.set(this.currentCourseStatus, 'pictureList', [obsKey].concat(this.currentCourseStatus['pictureList']));
+                Vue.nextTick(() => {
+                    if (this.currentCourseStatus['pictureList'].length == this.currentCourseStatus['pictureListLength']) {
+                        $(this.$refs.imgBoxWrapper).scrollTop(get(this.userConf, this.paths, 'scrollTop', 0))
+                    }
+                })
+            },
+            courseColor: function (courseName) {
+                if (compareArray(get(this.userConf, ['lastCourse'], 'paths'), this.paths)) {
+                    if (get(this.userConf, ['lastCourse'], 'name') == courseName) {
+                        return 'orange';
+                    }
+                }
             }
         },
         computed: {
-            pageVoList: function () {
-                if (this.showList) {
-                    let pageVoObj = Object.assign({}, this.catalogue);
-                    for (let path of this.paths) {
-                        pageVoObj = pageVoObj[path];
-                    }
-
-                    if (pageVoObj['audioList'] || pageVoObj['pdfList'] || pageVoObj['pictureList']) {
-                        this.currentPageVo = pageVoObj;
-                        this.showList = false;
-                        return {};
-                    } else {
-                        return pageVoObj;
-                    }
-                }
+            courseList: function () {
+                return get(this.catalogue, this.paths);
             },
             showBackIcon: function () {
                 return this.paths.length > 0;
             }
+        },
+        watch: {
+            userConf: function (oldValue, newValue) {
+
+            }
         }
     });
+
+    function setThenAjaxThenForceUpdate(obj = {}, paths = [], key, val) {
+        setThenAjax(obj, paths, key, val);
+        vueContent.$forceUpdate();
+    }
+
+    function setThenAjax(obj = {}, paths = [], key, val) {
+        set(obj, paths, key, val);
+        $.ajax({
+            type: 'post',
+            url: '/assist/updateUserConf',
+            contentType: 'application/json',
+            data: JSON.stringify(vueContent.userConf)
+        });
+    }
+
+    function set(obj = {}, paths = [], key, val) {
+        let tempObj = obj;
+        for (let path of paths) {
+            if (!tempObj[path]) {
+                tempObj[path] = {};
+            }
+            tempObj = tempObj[path];
+        }
+        tempObj[key] = val;
+    }
+
+    function get(obj = {}, paths = [], key, defaultVal) {
+        let tempObj = obj;
+        for (let path of paths) {
+            if (!tempObj[path]) {
+                return null;
+            }
+            tempObj = tempObj[path];
+        }
+        if (key) {
+            return tempObj[key] || defaultVal;
+        }
+        return tempObj || defaultVal;
+    }
+    
+    function compareArray(arr1 = [], arr2 = []) {
+        for (let index in arr1) {
+            if (!arr1[index] == arr2[index]) {
+                return false;
+            }
+        }
+        return true;
+    }
 
     // $.ajax({
     //     type: 'post',
@@ -147,12 +241,22 @@
     //     }
     // });
 
+    // 加载课程目录
     $.ajax({
         type: 'post',
         url: '/assist/loadCatalogue',
         data: {},
         success: function (catalogue) {
             vueContent.catalogue = catalogue;
+        }
+    });
+    // 加载用户配置
+    $.ajax({
+        type: 'post',
+        url: '/assist/loadUserConf',
+        data: {},
+        success: function (userConf) {
+            vueContent.userConf = userConf;
         }
     });
 
