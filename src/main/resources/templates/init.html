@@ -23,7 +23,7 @@
 </head>
 <body>
 <div>
-    <div id="vue-content" style="padding: 5px">
+    <div id="vue-content" style="padding: 2px;">
         <div v-if="showBackIcon" style="position: fixed; z-index: 10000; bottom: 60px; left: 20px;
             font-size: 4rem; color: gray; opacity:0.5; cursor: pointer">
             <span class="glyphicon glyphicon-chevron-left" aria-hidden="true" @click="backHandler()"></span>
@@ -31,21 +31,38 @@
         <!--音频-->
         <div style="display: flex; justify-content: center">
             <audio :autoplay="showList" v-for="(obsKey, index) in currentCourseObj['audioList']" :src="obsKeyToPathMap[obsKey]"
-                   :tiggerLoad="audioSrc(obsKey)"
+                   :tiggerLoad="audioSrc(obsKey)" ref="audio"
                    controls="controls" style="display: block; width: 100%; position: fixed; z-index: 10000; bottom: 10px;">
             </audio>
+        </div>
+        <!--评论按钮-->
+        <div v-if="!showList" :style="{bottom: (audioHeight() + 20) + 'px'}" style="display: block; position: fixed; z-index: 10000; right: 20px">
+            <div @click="showCommentHandler(true)" style="font-size: 2.5rem;" class="glyphicon glyphicon-pencil"></div>
+        </div>
+        <!--评论-->
+        <div v-if="showComment" :style="{height: window.innerHeight + 'px'}"
+             style="display: block; position: fixed; z-index: 11000; width: 100%; background-color: black; opacity: 0.9">
+            <div style="display: flex; justify-content: center">
+                <div style="display: block; width: 96%; position: fixed; z-index: 10000; top: 10px;">
+                    <textarea v-model="currentComment" class="form-control" rows="10"></textarea>
+                    <div style="text-align: right">
+                        <button @click="showCommentHandler(false)" type="button" class="btn btn-danger" style="margin-top: 5px">关闭</button>
+                        <button @click="saveCommentHandler()" type="button" class="btn btn-success" style="margin-top: 5px">保存并关闭</button>
+                    </div>
+                </div>
+            </div>
         </div>
         <!--列表-->
         <div v-if="showList">
             <ul class="list-group" v-for="(key, index) in Object.keys(courseList).sort()" :key="index">
-                <li v-if="!courseList[key]['audioList']" @click="goHandler(key)" :style="{color: courseColor(key)}"
-                    class="list-group-item" style="cursor: pointer">{{key}}</li>
-                <li v-if="courseList[key]['audioList']" class="list-group-item" :style="{color: courseColor(key)}"
-                    style="display: flex; justify-content: space-between; align-items: center">
-                    <span style="cursor: pointer" @click="goHandler(key)">{{key}}</span>
-                    <span style="font-size: 2rem" @click="playAudio(courseList[key]['audioList'], key)"
-                          :class="{'glyphicon-play': key != activeCourseName, 'glyphicon-pause': key == activeCourseName}"
-                          class="glyphicon" aria-hidden="true"></span>
+                <li class="list-group-item" :style="courseStyle(key)">
+                    <span @click="goHandler(key)" style="cursor: pointer">{{key}}</span>
+                    <span v-if="courseList[key]['audioList']" style="font-size: 1.7rem">
+                        <span  @click="showCommentHandler(true, key)" class="glyphicon glyphicon-pencil" style="margin-right: 8px"></span>
+                        <span  @click="playAudio(courseList[key]['audioList'], key)"
+                              :class="{'glyphicon-play': key != activeAudioCourseName, 'glyphicon-pause': key == activeAudioCourseName}"
+                              class="glyphicon" aria-hidden="true"></span>
+                    </span>
                 </li>
             </ul>
         </div>
@@ -79,16 +96,19 @@
             userConf: {}, // 用户配置
             showList: true,
             paths: [], // 层次路径
-            activeCourseName: '', // 当前激活播放的路径
+            activeAudioCourseName: '', // 当前激活播放的路径
+            activeCommentCourseName: '', // 当前激活播放的路径
             currentCourseObj: {}, // 当前打开的课程
             currentCourseStatus: {}, // 当前课程状态
+            currentComment: '', // 评论
+            showComment: false,
 
             obsKeyToPathMap: {} // 课程路径 -> src
         },
         methods: {
             goHandler: function (key) {
                 if (this.showList) {
-                    setThenAjax(this.userConf, this.paths, 'scrollTop', $('html').scrollTop());
+                    setThenAjax(this.userConf, this.paths, 'scrollTop', window.scrollY);
                 }
 
                 this.paths.push(key);
@@ -107,20 +127,21 @@
                     this.currentCourseObj = courseObj;
                 } else {
                     Vue.nextTick(() => {
-                        $('html').scrollTop(get(this.userConf, this.paths, 'scrollTop', 0))
+                        window.scrollTo(0, get(this.userConf, this.paths, 'scrollTop', 0))
                     });
                 }
             },
             backHandler: function () {
                 if (!this.showList) {
                     setThenAjax(this.userConf, this.paths, 'scrollTop', $(this.$refs.imgBoxWrapper).scrollTop());
+                    setThenAjax(this.userConf, this.paths, 'finishReading', scrollBottom($(this.$refs.imgBoxWrapper)) < 100);
                     this.showList = true;
                     this.currentCourseStatus = {};
                 }
                 this.paths.pop();
                 if (this.showList) {
                     Vue.nextTick(() => {
-                        $('html').scrollTop(get(this.userConf, this.paths, 'scrollTop', 0))
+                        window.scrollTo(0, get(this.userConf, this.paths, 'scrollTop', 0))
                     })
                 }
             },
@@ -145,7 +166,7 @@
             },
             playAudio: function (audioList, courseName) {
                 Vue.set(this.currentCourseObj, 'audioList', audioList);
-                this.activeCourseName = courseName;
+                this.activeAudioCourseName = courseName;
             },
             imgLoad: function (obsKey) {
                 Vue.set(this.currentCourseStatus, 'pictureList', [obsKey].concat(this.currentCourseStatus['pictureList']));
@@ -156,11 +177,48 @@
                 })
             },
             courseColor: function (courseName) {
+                if (get(this.userConf, [].concat(this.paths).concat(courseName), 'finishReading', false)) {
+                    return 'lightgray'
+                }
                 if (compareArray(get(this.userConf, ['lastCourse'], 'paths'), this.paths)) {
                     if (get(this.userConf, ['lastCourse'], 'name') == courseName) {
                         return 'orange';
                     }
                 }
+            },
+            courseStyle: function (key) {
+                if (this.courseList[key]['audioList']) {
+                    return {
+                        display: 'flex',
+                        'justify-content': 'space-between',
+                        'align-items': 'center',
+                        'color': this.courseColor(key)
+                    }
+                } else {
+                    return {
+                        'color': this.courseColor(key)
+                    }
+                }
+            },
+            showCommentHandler: function (status, activeCommentCourseName) {
+                this.showComment = status;
+                if (activeCommentCourseName) {
+                    this.activeCommentCourseName = activeCommentCourseName;
+                }
+                if (status) {
+                    const finalPaths = this.showList ? [].concat(this.paths).concat(this.activeCommentCourseName) : this.paths;
+                    this.currentComment = get(this.userConf, finalPaths, 'comment');
+                }
+            },
+            saveCommentHandler: function () {
+                if (this.currentComment) {
+                    const finalPaths = this.showList ? [].concat(this.paths).concat(this.activeCommentCourseName) : this.paths;
+                    setThenAjax(this.userConf, finalPaths, 'comment', this.currentComment);
+                }
+                this.showComment = false;
+            },
+            audioHeight: function () {
+                return $(this.$refs.audio).outerHeight() || 0
             }
         },
         computed: {
@@ -225,6 +283,10 @@
             }
         }
         return true;
+    }
+    
+    function scrollBottom($ele) {
+        return $ele[0].scrollHeight - $ele[0].scrollTop - $ele[0].clientHeight;
     }
 
     // $.ajax({
