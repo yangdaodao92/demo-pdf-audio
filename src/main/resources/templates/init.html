@@ -57,11 +57,11 @@
             <ul class="list-group" v-for="(key, index) in Object.keys(courseList).sort()" :key="index">
                 <li class="list-group-item" :style="courseStyle(key)">
                     <span @click="goHandler(key)" style="cursor: pointer">{{key}}</span>
-                    <span v-if="courseList[key]['audioList']" style="font-size: 1.7rem">
+                    <span v-if="courseList[key]['audioList']" style="display: flex; font-size: 1.7rem;">
                         <span  @click="showCommentHandler(true, key)" class="glyphicon glyphicon-pencil" style="margin-right: 8px"></span>
                         <span  @click="playAudio(courseList[key]['audioList'], key)"
-                              :class="{'glyphicon-play': key != activeAudioCourseName, 'glyphicon-pause': key == activeAudioCourseName}"
-                              class="glyphicon" aria-hidden="true"></span>
+                               :class="{'glyphicon-play': key != activeAudioCourseName, 'glyphicon-pause': key == activeAudioCourseName}"
+                               class="glyphicon" aria-hidden="true"></span>
                     </span>
                 </li>
             </ul>
