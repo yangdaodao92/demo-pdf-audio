@@ -271,7 +271,7 @@
         set(obj, paths, key, val);
         $.ajax({
             type: 'post',
-            url: '/assist/updateUserConf',
+            url: '/assist/updateUserConf/[[${confName}]]',
             contentType: 'application/json',
             data: JSON.stringify(vueContent.userConf)
         });
@@ -341,13 +341,12 @@
     // 加载用户配置
     $.ajax({
         type: 'post',
-        url: '/assist/loadUserConf',
+        url: '/assist/loadUserConf/[[${confName}]]',
         data: {},
         success: function (userConf) {
             vueContent.userConf = userConf;
         }
     });
-
 
 </script>
 
