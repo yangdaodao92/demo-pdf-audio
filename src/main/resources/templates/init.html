@@ -31,7 +31,7 @@
         <!--音频-->
         <div style="display: flex; justify-content: center">
             <audio :autoplay="showList" v-for="(obsKey, index) in currentCourseObj['audioList']" :src="obsKeyToPathMap[obsKey]"
-                   :tiggerLoad="audioSrc(obsKey)" ref="audio" @ended="audioEnded(obsKey, $event)"
+                   :tiggerLoad="audioSrc(obsKey)" ref="audio" @ended="audioEndedHandler(obsKey, $event)"
                    controls="controls" style="display: block; width: 100%; position: fixed; z-index: 10000; bottom: 10px;">
             </audio>
         </div>
@@ -57,9 +57,9 @@
             <ul class="list-group" v-for="(key, index) in Object.keys(courseList).sort()" :key="index">
                 <li class="list-group-item" :style="courseStyle(key)">
                     <span @click="goHandler(key)" style="cursor: pointer">{{key}}</span>
-                    <span v-if="courseList[key]['audioList']" style="display: flex; font-size: 1.7rem;">
-                        <span  @click="showCommentHandler(true, key)" class="glyphicon glyphicon-pencil" style="margin-right: 8px"></span>
-                        <span  @click="playAudio(courseList[key]['audioList'], key)"
+                    <span v-if="isCourse(key)" style="display: flex; font-size: 1.7rem;">
+                        <span @click="showCommentHandler(true, key)" class="glyphicon glyphicon-pencil" style="margin-right: 8px"></span>
+                        <span v-if="hasAudioList(key)" @click="playAudio(courseList[key]['audioList'], key)"
                                :class="{'glyphicon-play': key != activeAudioCourseName, 'glyphicon-pause': key == activeAudioCourseName}"
                                class="glyphicon" aria-hidden="true"></span>
                     </span>
@@ -76,7 +76,7 @@
                  :style="{height: window.innerHeight + 'px', overflowY: 'scroll', overflowScrolling: 'touch'}">
                 <div class="img-box">
                     <img v-for="obsKey in currentCourseObj['pictureList']" :src="obsKeyToPathMap[obsKey]" :tiggerLoad="pictureSrc(obsKey)"
-                         @load="imgLoad(obsKey)" alt="加载中" style="display: block">
+                         @load="imgLoadHandler(obsKey)" alt="加载中" style="display: block">
                 </div>
             </div>
         </div>
@@ -145,6 +145,12 @@
                     })
                 }
             },
+            isCourse: function (key) {
+                return !!(this.courseList[key]['audioList'] || this.courseList[key]['pictureList'])
+            },
+            hasAudioList: function (key) {
+                return !!this.courseList[key]['audioList']
+            },
             audioSrc: function (obsKey) {
                 let _this = this;
                 $.post(`/assist/loadObs?obsKey=${obsKey}`, function (url) {
@@ -172,7 +178,7 @@
                 set(this.userConf, ['lastCourse'], 'paths', this.paths);
                 setThenAjaxThenForceUpdate(this.userConf, ['lastCourse'], 'name', courseName);
             },
-            audioEnded: function (audioObsKey, $event) {
+            audioEndedHandler: function (audioObsKey, $event) {
                 const finalPaths = this.showList ? [].concat(this.paths).concat(this.activeAudioCourseName) : this.paths;
                 setThenAjax(this.userConf, finalPaths.concat('audioStatus'), audioObsKey, -1);
 
@@ -184,11 +190,11 @@
                         for (let key of Object.keys(audioStatus)) {
                             finishReading &= (audioStatus[key] === -1);
                         }
-                        setThenAjax(this.userConf, finalPaths, 'finishReading', !!finishReading);
+                        setThenAjaxThenForceUpdate(this.userConf, finalPaths, 'finishReading', !!finishReading);
                     }
                 }
             },
-            imgLoad: function (obsKey) {
+            imgLoadHandler: function (obsKey) {
                 Vue.set(this.currentCourseStatus, 'pictureList', [obsKey].concat(this.currentCourseStatus['pictureList']));
                 Vue.nextTick(() => {
                     if (this.currentCourseStatus['pictureList'].length == this.currentCourseStatus['pictureListLength']) {
@@ -207,7 +213,7 @@
                 }
             },
             courseStyle: function (key) {
-                if (this.courseList[key]['audioList']) {
+                if (this.isCourse(key)) {
                     return {
                         display: 'flex',
                         'justify-content': 'space-between',
