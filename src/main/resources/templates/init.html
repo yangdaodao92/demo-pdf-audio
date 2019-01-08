@@ -30,8 +30,10 @@
         </div>
         <!--音频-->
         <div style="display: flex; justify-content: center">
-            <audio :autoplay="showList" v-for="(obsKey, index) in currentCourseObj['audioList']" :src="obsKeyToPathMap[obsKey]"
+            <audio v-for="(obsKey, index) in currentCourseObj['audioList']" :src="obsKeyToPathMap[obsKey]"
                    :tiggerLoad="audioSrc(obsKey)" ref="audio" @ended="audioEndedHandler(obsKey, $event)"
+                   @pause="audioPauseHandler(obsKey, $event)" @canplay="audioCanplayHandler(obsKey, $event)"
+                   @loadstart="audioLoadstartHandler(obsKey, $event)"
                    controls="controls" style="display: block; width: 100%; position: fixed; z-index: 10000; bottom: 10px;">
             </audio>
         </div>
@@ -55,8 +57,11 @@
         <!--列表-->
         <div v-if="showList">
             <ul class="list-group" v-for="(key, index) in Object.keys(courseList).sort()" :key="index">
-                <li class="list-group-item" :style="courseStyle(key)">
-                    <span @click="goHandler(key)" style="cursor: pointer">{{key}}</span>
+                <li @click="goHandler(key)" class="list-group-item" :style="courseStyle(key)">
+                    <span style="cursor: pointer">
+                        {{key}}
+                        <span v-if="Object.keys(courseList[key]).length == 0" style="color: red">空</span>
+                    </span>
                     <span v-if="isCourse(key)" style="display: flex; font-size: 1.7rem;">
                         <span @click="showCommentHandler(true, key)" class="glyphicon glyphicon-pencil" style="margin-right: 8px"></span>
                         <span v-if="hasAudioList(key)" @click="playAudio(courseList[key]['audioList'], key)"
@@ -134,7 +139,10 @@
             backHandler: function () {
                 if (!this.showList) {
                     setThenAjax(this.userConf, this.paths, 'scrollTop', $(this.$refs.imgBoxWrapper).scrollTop());
-                    setThenAjax(this.userConf, this.paths, 'finishReading', scrollBottom($(this.$refs.imgBoxWrapper)) < 100);
+                    const finishReading = get(this.userConf, this.paths, 'finishReading', false);
+                    if (!finishReading) {
+                        setThenAjax(this.userConf, this.paths, 'finishReading', scrollBottom($(this.$refs.imgBoxWrapper)) < 100);
+                    }
                     this.showList = true;
                     this.currentCourseStatus = {};
                 }
@@ -193,6 +201,21 @@
                         setThenAjaxThenForceUpdate(this.userConf, finalPaths, 'finishReading', !!finishReading);
                     }
                 }
+            },
+            audioPauseHandler: function (audioObsKey, $event) {
+                const finalPaths = this.showList ? [].concat(this.paths).concat(this.activeAudioCourseName) : this.paths;
+                setThenAjax(this.userConf, finalPaths.concat('audioStatus'), audioObsKey, $event.target.currentTime);
+            },
+            audioCanplayHandler: function (audioObsKey, $event) {
+                if (this.showList) {
+                    $event.target.play()
+                }
+            },
+            audioLoadstartHandler: function (audioObsKey, $event) {
+                const finalPaths = this.showList ? [].concat(this.paths).concat(this.activeAudioCourseName) : this.paths;
+                let lastTime = get(this.userConf, finalPaths.concat('audioStatus'), audioObsKey, 0);
+                lastTime = lastTime < 0 ? 0 : lastTime;
+                $event.target.currentTime = lastTime;
             },
             imgLoadHandler: function (obsKey) {
                 Vue.set(this.currentCourseStatus, 'pictureList', [obsKey].concat(this.currentCourseStatus['pictureList']));
