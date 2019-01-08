@@ -36,31 +36,22 @@ public class FormatAudioPdf {
 //	public static String courseGroupName = "07 华杉讲透孙子兵法（完结）";
 //	public static String courseGroupName = "13 贾行家说《聊斋》（完结）";
 //	public static String courseGroupName = "28有效训练你的随机应变能力";
-	public static String courseGroupName = "30.有效提升与陌生人的社交能力";
+//	public static String courseGroupName = "30.有效提升与陌生人的社交能力";
 
 //	public static String courseGroupName = "16 五分钟商学院(完)";
 //	public static String courseGroupName = "06有效训练你的幽默感";
 //	public static String courseGroupName = "49 怎样成为带团队的高手";
+	public static String courseGroupName = "05 武志红心理学（完结）";
 	public static String parentPath = basePath + "/" + courseGroupName;
 	public static String parentPathFormat = basePath + "\\" + courseGroupName + "-Format";
 	public static String parentPathGroup = basePath + "\\" + courseGroupName + "-Group";
 
 	public static String outerStaticPath = "F:/BaiduNetdiskDownload/outer-static";
 
-	@Test
-	public void linshi2() {
-		List<File> allFiles = listFiles(new File(parentPathGroup));
-		for (File file : allFiles) {
-			String suffix = StringUtils.substring(file.getName(), file.getName().lastIndexOf(".") + 1);
-			if (suffix.equals("pdf")) {
-				FileUtils.deleteQuietly(file);
-			}
-		}
-	}
-
-	@Test
-	public void linshi() {
-		List<File> allFiles = listFiles(new File(parentPathGroup));
+	@Test // pdf转换为图片
+	public void convertPdf2Img() {
+//		List<File> allFiles = listFiles(new File(parentPathGroup));
+		List<File> allFiles = listFiles(new File("F:\\BaiduNetdiskDownload\\05 武志红心理学（完结）\\2018年\\7月"));
 		for (File file : allFiles) {
 			String suffix = StringUtils.substring(file.getName(), file.getName().lastIndexOf(".") + 1);
 			if (suffix.equals("pdf")) {
@@ -70,6 +61,13 @@ public class FormatAudioPdf {
 				} else {
 					throw new RuntimeException("file " + file.getName() + " 转换失败！");
 				}
+			}
+		}
+
+		for (File file : allFiles) {
+			String suffix = StringUtils.substring(file.getName(), file.getName().lastIndexOf(".") + 1);
+			if (suffix.equals("pdf")) {
+				FileUtils.deleteQuietly(file);
 			}
 		}
 	}
