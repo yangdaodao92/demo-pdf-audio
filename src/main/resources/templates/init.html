@@ -57,8 +57,8 @@
         <!--列表-->
         <div v-if="showList">
             <ul class="list-group" v-for="(key, index) in Object.keys(courseList).sort()" :key="index">
-                <li @click="goHandler(key)" class="list-group-item" :style="courseStyle(key)">
-                    <span style="cursor: pointer">
+                <li class="list-group-item" :style="courseStyle(key)">
+                    <span style="cursor: pointer" @click="goHandler(key)">
                         {{key}}
                         <span v-if="Object.keys(courseList[key]).length == 0" style="color: red">空</span>
                     </span>
