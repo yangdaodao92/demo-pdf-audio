@@ -23,9 +23,9 @@
 </head>
 <body>
 <div>
-    <div id="vue-content" style="padding: 2px;">
-        <div v-if="showBackIcon" style="position: fixed; z-index: 10000; bottom: 60px; left: 20px;
-            font-size: 4rem; color: gray; opacity:0.5; cursor: pointer">
+    <div id="vue-content" :style="{padding: '2px 2px ' + (audioHeight() + 10) + 'px'}">
+        <div v-if="showBackIcon" style="position: fixed; z-index: 10000; left: 20px;
+            font-size: 4rem; color: gray; opacity:0.5; cursor: pointer" :style="{bottom: (audioHeight() + 20) + 'px'}">
             <span class="glyphicon glyphicon-chevron-left" aria-hidden="true" @click="backHandler()"></span>
         </div>
         <!--音频-->
@@ -212,10 +212,6 @@
                 if ($event.target.currentTime != lastTime) {
                     $event.target.currentTime = lastTime;
                 }
-                //
-                // if (this.showList) {
-                //     // $event.target.play()
-                // }
             },
             imgLoadHandler: function (obsKey) {
                 Vue.set(this.currentCourseStatus, 'pictureList', [obsKey].concat(this.currentCourseStatus['pictureList']));
