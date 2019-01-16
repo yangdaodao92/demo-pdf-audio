@@ -76,7 +76,7 @@
             <iframe v-for="obsKey in currentCourseObj['pdfList']" :src="obsKeyToPathMap[obsKey]" :tiggerLoad="pdfIframeSrc(obsKey)"
                     :style="{width: '100%', height: window.innerHeight + 'px'}"></iframe>
             <!--图片-->
-            <div v-if="currentCourseObj['pictureList']" ref="imgBoxWrapper"
+            <div v-if="currentCourseObj['pictureList']" ref="imgBoxWrapper" @scroll="imgBoxWrapperScrollHandler"
                  :style="{height: window.innerHeight + 'px', overflowY: 'scroll', overflowScrolling: 'touch'}">
                 <div class="img-box">
                     <img v-for="obsKey in currentCourseObj['pictureList']" :src="obsKeyToPathMap[obsKey]" :tiggerLoad="pictureSrc(obsKey)"
@@ -140,7 +140,7 @@
                     setThenAjax(this.userConf, this.paths, 'scrollTop', $(this.$refs.imgBoxWrapper).scrollTop());
                     const finishReading = get(this.userConf, this.paths, 'finishReading', false);
                     if (!finishReading) {
-                        setThenAjax(this.userConf, this.paths, 'finishReading', scrollBottom($(this.$refs.imgBoxWrapper)) < 100);
+                        setThenAjax(this.userConf, this.paths, 'finishReading', scrollBottom($(this.$refs.imgBoxWrapper)) < 500);
                     }
                     this.showList = true;
                     this.currentCourseStatus = {};
@@ -265,6 +265,12 @@
             audioHeight: function () {
                 return $(this.$refs.audio).outerHeight() || 0
             },
+            imgBoxWrapperScrollHandler: function () {
+                const finishReading = get(this.userConf, this.paths, 'finishReading', false);
+                if (!finishReading) {
+                    setThenAjax(this.userConf, this.paths, 'finishReading', scrollBottom($(this.$refs.imgBoxWrapper)) < 500);
+                }
+            }
         },
         computed: {
             courseList: function () {
